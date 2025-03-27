@@ -57,6 +57,7 @@
   </template>
   
   <script setup lang="ts">
+  import axios from 'axios'
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
   
@@ -98,12 +99,38 @@
     showPassword.value = !showPassword.value
   }
   
-  const handleRegister = () => {
-    successMessage.value = '注册成功！即将跳转至登录页面...'
+  // const handleRegister = () => {
+  //   successMessage.value = '注册成功！即将跳转至登录页面...'
+  //   setTimeout(() => {
+  //     router.push('/login')
+  //   }, 2000)
+  // }
+  const handleRegister = async () => {
+  try {
+    const res = await axios.post('http://host.docker.internal:8080/register', {
+      username: username.value,
+      password: password.value,
+    })
+
+    // 注册成功提示
+    successMessage.value = res.data.message || '注册成功！即将跳转至登录页面...'
+
+    // 2 秒后跳转到登录页
     setTimeout(() => {
       router.push('/login')
     }, 2000)
+  } catch (err: any) {
+    successMessage.value = ''
+
+    // 如果后端返回了错误信息
+    if (err.response?.data?.error) {
+      alert(err.response.data.error)
+    } else {
+      alert('请求失败，请稍后再试')
+    }
   }
+}
+
   
   const goToLogin = () => {
     router.push('/login')

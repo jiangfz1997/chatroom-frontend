@@ -43,6 +43,7 @@
   <script setup lang="ts">
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
+  import axios from 'axios'
   
   const router = useRouter()
   
@@ -62,27 +63,52 @@
     return username.value.trim() !== '' && password.value.length >= 6
   })
   
-  // 模拟用户数据
-  const mockUsers = [
-    { username: 'aaa', password: '123456' },
-    { username: 'bob', password: 'password' }
-  ]
+  // // 模拟用户数据
+  // const mockUsers = [
+  //   { username: 'aaa', password: '123456' },
+  //   { username: 'bob', password: 'password' }
+  // ]
   
-  // 模拟登录验证
-  const handleLogin = () => {
-    const match = mockUsers.find(
-      (user) =>
-        user.username === username.value &&
-        user.password === password.value
-    )
+  // // 模拟登录验证
+  // const handleLogin = () => {
+  //   const match = mockUsers.find(
+  //     (user) =>
+  //       user.username === username.value &&
+  //       user.password === password.value
+  //   )
   
-    if (match) {
-      console.log('登录成功！')
+  //   if (match) {
+  //     console.log('登录成功！')
+  //     errorMessage.value = ''
+  //     router.push('/chatroom')//跳转到聊天室界面
+  //   } else {
+  //     console.log('登录失败：用户名或密码错误')
+  //     errorMessage.value = '用户名或密码错误，请重新输入'
+  //   }
+  // }
+
+
+  // 登录验证（调用后端接口）
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post('http://host.docker.internal:8080/login', {
+        username: username.value,
+        password: password.value
+      })
+
+      // 设置用户名到 localStorage
+      localStorage.setItem('username', res.data.username)
+
+      // 登录成功：跳转聊天室
+      console.log('登录成功：', res.data)
       errorMessage.value = ''
-      router.push('/chatroom')//跳转到聊天室界面
-    } else {
-      console.log('登录失败：用户名或密码错误')
-      errorMessage.value = '用户名或密码错误，请重新输入'
+      router.push('/chatroom')
+    } catch (err: any) {
+      if (err.response?.data?.error) {
+        errorMessage.value = err.response.data.error
+      } else {
+        errorMessage.value = '登录请求失败，请稍后重试'
+      }
     }
   }
   
