@@ -42,7 +42,21 @@
         </div>
         <div v-else class="chat-content">
           <h3>{{ selectedRoom.name }}</h3>
-          <div class="messages">
+          <div class="messages" ref="messageContainer">
+            <div
+              v-if="selectedRoom && !noMoreMessages[selectedRoom.id]"
+              class="history-loader"
+              @click="loadHistory(selectedRoom.id)"
+            >
+              Review more history messages
+            </div>
+            <div
+              v-else-if="selectedRoom && noMoreMessages[selectedRoom.id]"
+              class="history-loader no-more"
+            >
+              No more history messages
+            </div>
+
             <div
               v-for="(msg, index) in messages"
               :key="index"
@@ -52,6 +66,7 @@
               <div class="message-bubble">{{ msg.text }}</div>
             </div>
           </div>
+
           <div class="input-area">
             <input
               v-model="newMessage"
@@ -124,7 +139,7 @@
 
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import axios from 'axios'
 
 // ========================== 通用函数 ==============================
@@ -140,6 +155,36 @@ const addChatroomToSidebar = (room: { id: string, name: string, isPrivate: boole
     })
   }
 }
+
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    setTimeout(() => {
+      const el = messageContainer.value
+      if (el) {
+        el.scrollTop = el.scrollHeight - el.clientHeight
+        console.log(
+          '滚动到底部 scrollTop:',
+          el.scrollTop,
+          'scrollHeight:',
+          el.scrollHeight,
+          'clientHeight:',
+          el.clientHeight
+        )
+      }
+    }, 50)
+  })
+}
+
+const isAtBottom = () => {
+  const el = messageContainer.value
+  if (!el) return false
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 10 // 容差10px
+}
+
+
+
+
 
 // ========================== 登录后加载聊天室 ==========================
 
@@ -230,7 +275,8 @@ const chatrooms = ref<{ id: string; name: string; isPrivate: boolean; unread: nu
 const selectedRoom = ref<null | typeof chatrooms.value[0]>(null)
 //const messages = ref<{ sender: string; text: string }[]>([])
 const newMessage = ref('')
-const messageMap = ref<Record<string, { sender: string; text: string }[]>>({})
+//const messageMap = ref<Record<string, { sender: string; text: string }[]>>({})
+const messageMap = ref<Record<string, { sender: string; text: string; timestamp?: string }[]>>({}) //此处有修改
 const messages = computed(() =>
   selectedRoom.value ? messageMap.value[selectedRoom.value.id] || [] : []
 )
@@ -249,9 +295,9 @@ const connectWebSocket = (roomId: string) => {
       messageMap.value[roomId] = []
     }
 
-    if (messageMap.value[roomId].length === 0) {
-      messageMap.value[roomId].push({ sender: 'Admin', text: 'Welcome!' })
-    }
+    // if (messageMap.value[roomId].length === 0) {
+    //   messageMap.value[roomId].push({ sender: 'Admin', text: 'Welcome!' })
+    // }
   }
 
   socket.onmessage = (event) => { // 此处有修改
@@ -259,6 +305,9 @@ const connectWebSocket = (roomId: string) => {
       const msg = JSON.parse(event.data)
       if (!messageMap.value[roomId]) messageMap.value[roomId] = [] // 此处有修改
       messageMap.value[roomId].push(msg)
+      if (isAtBottom()) {
+        scrollToBottom()
+      }
     } catch (err) {
       console.error('消息解析失败：', err)
     }
@@ -281,6 +330,8 @@ const selectRoom = (room: typeof chatrooms.value[0]) => {
   if (!messages.value[room.id]) messages.value[room.id] = [] // 确保有初始化
   room.unread = 0
   connectWebSocket(room.id)
+  loadHistory(room.id) // 此处有修改：切换后请求历史记录
+  scrollToBottom()
 }
 
 // 发送消息
@@ -292,6 +343,9 @@ const sendMessage = () => {
     const msg = { sender: username, text: newMessage.value.trim() }
     socket.send(JSON.stringify(msg))
     newMessage.value = ''
+    
+    scrollToBottom()
+    
   }
 }
 
@@ -356,6 +410,59 @@ const closeCreateModal = () => {
   newRoomName.value = ''
   newRoomPrivacy.value = 'public'
 }
+
+
+
+
+const messageContainer = ref<HTMLElement | null>(null) // 此处有修改
+const noMoreMessages = ref<Record<string, boolean>>({}) // 此处有修改
+const loadingHistory = ref(false) // 此处有修改
+const pageSize = 20 // 此处有修改
+
+const loadHistory = async (roomId: string) => { // 此处有修改
+  if (loadingHistory.value || noMoreMessages.value[roomId]) return // 此处有修改
+  loadingHistory.value = true // 此处有修改
+  const existing = messageMap.value[roomId] || [] // 此处有修改
+  //const lastTimestamp = existing[0]?.timestamp || '' // 此处有修改
+  const lastTimestamp = existing.length > 0 ? existing[0].timestamp : '' 
+  console.log("发送前的时间戳 before:", lastTimestamp)
+
+  try {
+    const res = await axios.get(`http://host.docker.internal:8080/messages/${roomId}`, {
+      params: {
+        username,
+        before: lastTimestamp,
+        limit: pageSize,
+      }
+    })
+    const older = res.data.messages
+    console.log('历史消息加载结果：', older)
+    if (!Array.isArray(older) || older.length === 0) {
+      noMoreMessages.value[roomId] = true
+      return
+    } else {
+      messageMap.value[roomId] = [...older.reverse(), ...existing] // 此处有修改
+    }
+  } catch (e) {
+    console.error('加载历史消息失败', e)
+  } finally {
+    loadingHistory.value = false
+  }
+} // 此处有修改
+
+const handleScroll = () => { // 此处有修改
+  const el = messageContainer.value
+  if (!el || !selectedRoom.value) return
+  console.log("el.scrollTop current:", el.scrollTop)
+  if (el.scrollTop <= 5) {
+    console.log("检测到滚动，scrollTop:", el.scrollTop)
+    loadHistory(selectedRoom.value.id)
+  }
+} // 此处有修改
+
+
+
+
 </script>
 
 
@@ -497,10 +604,13 @@ const closeCreateModal = () => {
 
 .chat-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;                /*新增 */
+  flex-direction: column;       /*新增 */
+  overflow: hidden;             /*替换 overflow-y 为 overflow，避免双滚动 */
   padding: 20px;
-  padding-bottom: 80px; /* 给底部输入栏预留空间 */
+  padding-bottom: 80px;
 }
+
 
 .messages {
   flex: 1;
@@ -645,6 +755,23 @@ const closeCreateModal = () => {
   color: white;
   margin-top: 10px;
 }
+
+.history-loader {
+  text-align: center;
+  font-size: 14px;
+  color: #1890ff;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-bottom: 12px;
+  transition: opacity 0.3s;
+} /* 此处有新增 */
+
+.history-loader.no-more {
+  color: #aaa;
+  cursor: default;
+  text-decoration: none;
+} /* 此处有新增 */
+
 
 </style>
 
