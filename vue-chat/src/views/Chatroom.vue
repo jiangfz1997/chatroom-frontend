@@ -25,6 +25,7 @@
           class="chatroom-item"
           :class="{ active: selectedRoom && selectedRoom.id === room.id }"
           @click="selectRoom(room)"
+          @contextmenu.prevent="openContextMenu($event, room)"
         >
           <span class="room-name">{{ room.name }}</span>
           <span class="room-type">{{ room.isPrivate ? '私密' : '公开' }}</span>
@@ -133,6 +134,30 @@
         </div>
       </div>
     </div>
+
+    <!-- 退出聊天室确认弹窗 -->
+    <div v-if="showExitConfirm" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Exit this chatroom?</h3>
+        <p>Are you sure you want to leave <strong>{{ exitRoomToConfirm?.name }}</strong>?</p>
+        <div class="modal-buttons">
+          <button @click="confirmExitChatroom">Confirm</button>
+          <button @click="showExitConfirm = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <ul
+      v-if="contextMenuVisible"
+      class="context-menu"
+      :style="{ top: `${contextMenuPosition.y}px`, left: `${contextMenuPosition.x}px` }"
+      @click="handleContextMenuClick"
+    >
+      <li @click="handleExitClick">Exit Chatroom</li>
+    </ul>
+
+
 
   </div>
 </template>
@@ -460,7 +485,68 @@ const handleScroll = () => { // 此处有修改
   }
 } // 此处有修改
 
+//退出聊天室
+const showExitConfirm = ref(false)
+const exitRoomToConfirm = ref<{ id: string; name: string } | null>(null)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuVisible = ref(false)
+const contextMenuRoom = ref<null | typeof chatrooms.value[0]>(null)
 
+// 打开右键菜单
+const openContextMenu = (e: MouseEvent, room: typeof chatrooms.value[0]) => {
+  contextMenuVisible.value = true
+  contextMenuRoom.value = room
+  contextMenuPosition.value = { x: e.clientX, y: e.clientY }
+}
+
+// 点菜单中的“退出聊天室”
+const handleExitClick = () => {
+  exitRoomToConfirm.value = contextMenuRoom.value
+  showExitConfirm.value = true
+  contextMenuVisible.value = false
+}
+
+// 点击菜单外区域隐藏菜单
+document.addEventListener('click', () => {
+  contextMenuVisible.value = false
+})
+
+
+const confirmExitChatroom = async () => {
+  if (!exitRoomToConfirm.value) return
+
+  try {
+    await axios.post('http://host.docker.internal:8080/chatrooms/exit', {
+      username,
+      chatroom_id: exitRoomToConfirm.value.id,
+    })
+
+    // 1. 移除聊天室
+    chatrooms.value = chatrooms.value.filter(r => r.id !== exitRoomToConfirm.value?.id)
+
+    // 2. 清除 websocket
+    const socket = sockets.value[exitRoomToConfirm.value.id]
+    if (socket) {
+      socket.close()
+      delete sockets.value[exitRoomToConfirm.value.id]
+    }
+
+    // 3. 清除消息记录
+    delete messageMap.value[exitRoomToConfirm.value.id]
+
+    // 4. 如果是当前选中的聊天室，取消选中状态
+    if (selectedRoom.value?.id === exitRoomToConfirm.value.id) {
+      selectedRoom.value = null
+    }
+
+    // 5. 关闭弹窗
+    showExitConfirm.value = false
+    exitRoomToConfirm.value = null
+  } catch (err) {
+    console.error('退出聊天室失败:', err)
+    alert('退出失败，请稍后再试')
+  }
+}
 
 
 </script>
@@ -771,6 +857,27 @@ const handleScroll = () => { // 此处有修改
   cursor: default;
   text-decoration: none;
 } /* 此处有新增 */
+
+.context-menu {
+  position: fixed;
+  background-color: #2c2c2c;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 0;
+  width: 160px;
+  z-index: 9999;
+  list-style: none;
+}
+
+.context-menu li {
+  padding: 8px 16px;
+  color: white;
+  cursor: pointer;
+}
+
+.context-menu li:hover {
+  background-color: #3a3a3a;
+}
 
 
 </style>
