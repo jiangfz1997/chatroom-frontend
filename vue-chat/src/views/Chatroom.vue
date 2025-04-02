@@ -335,10 +335,10 @@ const connectWebSocket = async (roomId: string) => {
         console.error('无效的 WebSocket URL:', res.data);
         return;
     }
-    console.log('获取 WebSocket URL:', res.data.ws_url);
-    // const wsUrl = res.data.ws_url;
-    console.log("ws url:", `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`)
-    const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
+    // console.log('获取 WebSocket URL:', res.data.ws_url);
+    const wsUrl = res.data.ws_url;
+    // console.log("ws url:", `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`)
+    // const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
     const socket = new WebSocket(wsUrl);
     sockets.value[roomId] = socket;
 
