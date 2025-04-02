@@ -17,6 +17,13 @@
 
     <!-- 主体区域 -->
     <div class="main-content">
+      <!-- 端口选择（开发用！） -->
+      <div class="port-selector">
+        <span>端口選擇：</span>
+        <button @click="forcePort = 8081">連 8081</button>
+        <button @click="forcePort = 8082">連 8082</button>
+        <span v-if="forcePort">（目前選擇：{{ forcePort }}）</span>
+      </div>
       <!-- 左侧聊天室列表 -->
       <div class="sidebar">
         <div
@@ -30,6 +37,7 @@
           <span class="room-name">{{ room.name }}</span>
           <span class="room-type">{{ room.isPrivate ? '私密' : '公开' }}</span>
           <span v-if="room.unread > 0" class="unread">{{ room.unread }}</span>
+
         </div>
         <div class="chatroom-item create-room" @click="showCreateModal = true">
           + 新建聊天室
@@ -166,7 +174,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import axios from 'axios'
-
+const apiBase = import.meta.env.VITE_API_BASE
+const socketMap: Record<string, WebSocket> = {}
+const socketReadyMap: Record<string, Promise<void>> = {}
+const socketReadyResolvers: Record<string, () => void> = {}
 // ========================== 通用函数 ==============================
 
 // 封装：添加聊天室到侧边栏
@@ -215,7 +226,7 @@ const isAtBottom = () => {
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`http://host.docker.internal:8080/chatrooms/user/${username}`)
+    const res = await axios.get(`${apiBase}/chatrooms/user/${username}`)
     const rooms = res.data.rooms || []
     rooms.forEach((room: any) => {
       const roomId = room.room_id || room.id //优先用 room.room_id
@@ -251,7 +262,7 @@ const handleSearchRoom = async () => {
   if (!searchRoomId.value.trim()) return
 
   try {
-    const response = await axios.get(`http://host.docker.internal:8080/chatrooms/${searchRoomId.value.trim()}`)
+    const response = await axios.get(`${apiBase}/chatrooms/${searchRoomId.value.trim()}`)
     foundRoom.value = response.data
     searchError.value = ''
     showSearchModal.value = true // 显示弹窗
@@ -264,7 +275,7 @@ const handleSearchRoom = async () => {
 //加入
 const joinChatroom = async (roomId: string) => {
   try {
-    await axios.post('http://host.docker.internal:8080/chatrooms/join', {
+    await axios.post('${apiBase}/chatrooms/join', {
       username,
       chatroom_id: roomId
     })
@@ -288,6 +299,7 @@ const joinChatroom = async (roomId: string) => {
 
 const username = localStorage.getItem('username') || '未知用户'
 //const socket = ref<WebSocket | null>(null)
+// const sockets = ref<{ [key: string]: WebSocket }>({})
 const sockets = ref<Record<string, WebSocket>>({}) // 此处有修改
 // const chatrooms = ref([
 //   { id: 1, name: 'Chatroom Guide', isPrivate: false, unread: 0 },
@@ -295,6 +307,7 @@ const sockets = ref<Record<string, WebSocket>>({}) // 此处有修改
 //   { id: 3, name: '前端频道', isPrivate: false, unread: 5 },
 // ])
 const chatrooms = ref<{ id: string; name: string; isPrivate: boolean; unread: number }[]>([])
+const forcePort = ref<number | null>(null)
 
 //选择聊天室开始聊天
 const selectedRoom = ref<null | typeof chatrooms.value[0]>(null)
@@ -307,55 +320,104 @@ const messages = computed(() =>
 )
 
 // 建立 WebSocket 连接
-const connectWebSocket = (roomId: string) => {
-  if (sockets.value[roomId]) return // 已连接则跳过
 
-  const socket = new WebSocket(`ws://host.docker.internal:8080/ws/${roomId}?username=${username}`) // 此处有修改
-  sockets.value[roomId] = socket // 此处有修改
+const connectWebSocket = async (roomId: string) => {
+    if (sockets.value[roomId]) return;
 
-  socket.onopen = () => { // 此处有修改
-    console.log('WebSocket 已连接')
-
-    if (!messageMap.value[roomId]) {
-      messageMap.value[roomId] = []
+    const res = await axios.get(`${apiBase}/chatrooms/${roomId}/enter`, {
+        params: { username }
+    });
+    if (res.status !== 200) {
+        console.error('获取 WebSocket URL 失败:', res.statusText);
+        return;
     }
-
-    // if (messageMap.value[roomId].length === 0) {
-    //   messageMap.value[roomId].push({ sender: 'Admin', text: 'Welcome!' })
-    // }
-  }
-
-  socket.onmessage = (event) => { // 此处有修改
-    try {
-      const msg = JSON.parse(event.data)
-      if (!messageMap.value[roomId]) messageMap.value[roomId] = [] // 此处有修改
-      messageMap.value[roomId].push(msg)
-      if (isAtBottom()) {
-        scrollToBottom()
-      }
-    } catch (err) {
-      console.error('消息解析失败：', err)
+    if (!res.data || !res.data.ws_url) {
+        console.error('无效的 WebSocket URL:', res.data);
+        return;
     }
-  }
+    console.log('获取 WebSocket URL:', res.data.ws_url);
+    // const wsUrl = res.data.ws_url;
+    console.log("ws url:", `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`)
+    const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
+    const socket = new WebSocket(wsUrl);
+    sockets.value[roomId] = socket;
 
-  socket.onclose = () => { // 此处有修改
-    console.log('WebSocket 已关闭')
-  }
+    socketReadyMap[roomId] = new Promise<void>((resolve) => {
+        socketReadyResolvers[roomId] = resolve;
+    });
 
-  socket.onerror = (err) => { // 此处有修改
-    console.error('WebSocket 错误：', err)
-  }
-}
+    socket.onopen = () => {
+        console.log('WebSocket 已连接');
+        socketReadyResolvers[roomId]();
+        if (!messageMap.value[roomId]) {
+            messageMap.value[roomId] = [];
+        }
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            console.log('收到 WebSocket 消息:', msg);
+
+            if (!messageMap.value[roomId]) messageMap.value[roomId] = [];
+
+            // 根据消息类型处理
+            switch (msg.type) {
+                case "message":
+                    // 实时消息，规范化后存入 messageMap
+                    const normalizedMsg = {
+                        sender: msg.sender,
+                        text: msg.text,
+                        timestamp: msg.sentAt || msg.timestamp,
+                        roomId: msg.roomID || msg.room_id,
+                    };
+                    messageMap.value[roomId].push(normalizedMsg);
+                    if (isAtBottom()) {
+                        scrollToBottom();
+                    }
+                    break;
+
+                case "history_result":
+                    // 历史消息由 fetchHistoryViaWebSocket 处理，这里忽略
+                    console.log("收到 history_result，交由 fetchHistoryViaWebSocket 处理");
+                    break;
+
+                default:
+                    console.warn("未知消息类型:", msg.type);
+            }
+        } catch (err) {
+            console.error('消息解析失败：', err);
+        }
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket 错误:', error);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket 已关闭');
+        delete sockets.value[roomId];
+    };
+};
 
 // 切换聊天室
-const selectRoom = (room: typeof chatrooms.value[0]) => {
+const selectRoom = async (room: typeof chatrooms.value[0]) => {
   console.log('点击事件触发，room:', room)
-  console.log("准备创建 WebSocket:", `ws://host.docker.internal:8080/ws/${room.id}?username=${username}`)
+
   selectedRoom.value = room
+  console.log("123123123:", messageMap.value[room.id]);
   if (!messages.value[room.id]) messages.value[room.id] = [] // 确保有初始化
   room.unread = 0
   connectWebSocket(room.id)
-  loadHistory(room.id) // 此处有修改：切换后请求历史记录
+
+  await socketReadyMap[room.id]
+  console.log('WebSocket 连接状态：', sockets.value[room.id]?.readyState)
+  if (sockets.value[room.id]?.readyState === WebSocket.OPEN) {
+    console.log('WebSocket 已连接')
+  } else {
+    console.log('WebSocket 未连接')
+  }
+  // loadHistory(room.id) // 此处有修改：切换后请求历史记录
   scrollToBottom()
 }
 
@@ -365,7 +427,7 @@ const sendMessage = () => {
   const roomId = selectedRoom.value.id
   const socket = sockets.value[roomId] // 此处有修改
   if (socket?.readyState === WebSocket.OPEN) {
-    const msg = { sender: username, text: newMessage.value.trim() }
+    const msg = { type:"message", sender: username, text: newMessage.value.trim() }
     socket.send(JSON.stringify(msg))
     newMessage.value = ''
     
@@ -401,7 +463,7 @@ const createRoomConfirm = async () => {
   }
 
   try {
-    const response = await axios.post('http://host.docker.internal:8080/chatrooms', {
+    const response = await axios.post('${apiBase}/chatrooms', {
       name: newRoomName.value.trim(),
       is_private: newRoomPrivacy.value === 'private',
       created_by: username
@@ -444,36 +506,118 @@ const noMoreMessages = ref<Record<string, boolean>>({}) // 此处有修改
 const loadingHistory = ref(false) // 此处有修改
 const pageSize = 20 // 此处有修改
 
-const loadHistory = async (roomId: string) => { // 此处有修改
-  if (loadingHistory.value || noMoreMessages.value[roomId]) return // 此处有修改
-  loadingHistory.value = true // 此处有修改
-  const existing = messageMap.value[roomId] || [] // 此处有修改
-  //const lastTimestamp = existing[0]?.timestamp || '' // 此处有修改
-  const lastTimestamp = existing.length > 0 ? existing[0].timestamp : '' 
+const loadHistory = async (roomId: string) => {
+  if (loadingHistory.value || noMoreMessages.value[roomId]) return
+  loadingHistory.value = true
+
+  const existing = messageMap.value[roomId] || []
+  const lastTimestamp = existing.length > 0 ? existing[0].timestamp : ''
   console.log("发送前的时间戳 before:", lastTimestamp)
+  console.log("before fetching old", messageMap.value[roomId])
 
   try {
-    const res = await axios.get(`http://host.docker.internal:8080/messages/${roomId}`, {
-      params: {
-        username,
-        before: lastTimestamp,
-        limit: pageSize,
-      }
-    })
-    const older = res.data.messages
-    console.log('历史消息加载结果：', older)
+    const older = await fetchHistoryViaWebSocket(roomId, lastTimestamp, pageSize);
+    console.log('历史消息加载结果：', older);
+    console.log("before loading old", messageMap.value[roomId])
     if (!Array.isArray(older) || older.length === 0) {
-      noMoreMessages.value[roomId] = true
-      return
-    } else {
-      messageMap.value[roomId] = [...older.reverse(), ...existing] // 此处有修改
+        noMoreMessages.value[roomId] = true;
+        return;
     }
-  } catch (e) {
-    console.error('加载历史消息失败', e)
-  } finally {
-    loadingHistory.value = false
-  }
-} // 此处有修改
+
+    // 规范化消息格式
+    const normalizedOlder = older.map(msg => ({
+        sender: msg.sender || msg.Sender, // 兼容 DynamoDB 和实时消息
+        text: msg.text || msg.Text,
+        timestamp: msg.timestamp || msg.sentAt,
+        roomId: msg.room_id || msg.roomID,
+    })).filter(msg => typeof msg.text === "string" && typeof msg.sender === "string");
+
+    messageMap.value[roomId] = [
+        ...normalizedOlder.reverse(),
+        ...(messageMap.value[roomId] || []),
+    ];
+    console.log("更新后 messageMap:", messageMap.value[roomId]);
+} catch (e) {
+    console.error('加载历史消息失败', e);
+} finally {
+    loadingHistory.value = false;
+}
+}
+
+// const loadHistory = async (roomId: string) => { // 此处有修改
+//   if (loadingHistory.value || noMoreMessages.value[roomId]) return // 此处有修改
+//   loadingHistory.value = true // 此处有修改
+//   const existing = messageMap.value[roomId] || [] // 此处有修改
+//   //const lastTimestamp = existing[0]?.timestamp || '' // 此处有修改
+//   const lastTimestamp = existing.length > 0 ? existing[0].timestamp : '' 
+//   console.log("发送前的时间戳 before:", lastTimestamp)
+
+//   try {
+//     const res = await axios.get(`${apiBase}/messages/${roomId}`, {
+//       params: {
+//         username,
+//         before: lastTimestamp,
+//         limit: pageSize,
+//       }
+//     })
+//     const older = res.data.messages
+//     console.log('历史消息加载结果：', older)
+//     if (!Array.isArray(older) || older.length === 0) {
+//       noMoreMessages.value[roomId] = true
+//       return
+//     } else {
+//       messageMap.value[roomId] = [...older.reverse(), ...existing] // 此处有修改
+//     }
+//   } catch (e) {
+//     console.error('加载历史消息失败', e)
+//   } finally {
+//     loadingHistory.value = false
+//   }
+// } // 此处有修改
+
+function fetchHistoryViaWebSocket(roomId: string, before: string, limit: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+        const socket = sockets.value[roomId];
+        if (!socket) {
+            reject(new Error("WebSocket 未连接"));
+            return;
+        }
+
+        const handler = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("收到 WebSocket 消息:", data); // 调试原始数据
+                if (data.type === "history_result" && data.roomID === roomId) {
+                    socket.removeEventListener("message", handler);
+                    if (Array.isArray(data.messages)) {
+                        console.log("处理历史消息:", data.messages); // 调试处理后的数据
+                        resolve(data.messages); // 确保只返回 messages
+                    } else {
+                        console.warn("⚠️ messages 字段无效:", data);
+                        resolve([]);
+                    }
+                }
+            } catch (e) {
+                console.error("⚠️ 解析 WebSocket 消息失败:", e);
+                resolve([]);
+            }
+        };
+
+        socket.addEventListener("message", handler);
+        const request = { type: "fetch_history", roomID: roomId, before, limit };
+        console.log("before 1111", messageMap.value[roomId])
+
+        socket.send(JSON.stringify(request));
+        console.log("before 2222", messageMap.value[roomId])
+
+        console.log("🛰️ 发送 fetch_history 请求:", request);
+
+        setTimeout(() => {
+            socket.removeEventListener("message", handler);
+            reject(new Error("拉取历史消息超时"));
+        }, 5000);
+    });
+}
 
 const handleScroll = () => { // 此处有修改
   const el = messageContainer.value
@@ -516,7 +660,7 @@ const confirmExitChatroom = async () => {
   if (!exitRoomToConfirm.value) return
 
   try {
-    await axios.post('http://host.docker.internal:8080/chatrooms/exit', {
+    await axios.post('${apiBase}/chatrooms/exit', {
       username,
       chatroom_id: exitRoomToConfirm.value.id,
     })

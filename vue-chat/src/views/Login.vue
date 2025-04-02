@@ -44,7 +44,8 @@
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
   import axios from 'axios'
-  
+  const apiBase = import.meta.env.VITE_API_BASE
+
   const router = useRouter()
   
   // 表单字段
@@ -91,7 +92,8 @@
   // 登录验证（调用后端接口）
   const handleLogin = async () => {
     try {
-      const res = await axios.post('http://host.docker.internal:8080/login', {
+      console.log("login request" + apiBase)
+      const res = await axios.post(`${apiBase}/login`, {
         username: username.value,
         password: password.value
       })

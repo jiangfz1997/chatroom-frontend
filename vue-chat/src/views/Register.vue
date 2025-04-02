@@ -60,7 +60,8 @@
   import axios from 'axios'
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
-  
+  const apiBase = import.meta.env.VITE_API_BASE
+
   const router = useRouter()
   
   const username = ref('')
@@ -107,7 +108,7 @@
   // }
   const handleRegister = async () => {
   try {
-    const res = await axios.post('http://host.docker.internal:8080/register', {
+    const res = await axios.post(`${apiBase}/register`, {
       username: username.value,
       password: password.value,
     })
