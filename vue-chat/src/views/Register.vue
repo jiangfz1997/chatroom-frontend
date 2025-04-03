@@ -58,6 +58,7 @@
   
   <script setup lang="ts">
   import axios from 'axios'
+  import api from '@/utils/http'
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
   const apiBase = import.meta.env.VITE_API_BASE
@@ -108,7 +109,7 @@
   // }
   const handleRegister = async () => {
   try {
-    const res = await axios.post(`${apiBase}/register`, {
+    const res = await api.post(`${apiBase}/register`, {
       username: username.value,
       password: password.value,
     })

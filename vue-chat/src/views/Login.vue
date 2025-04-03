@@ -43,9 +43,10 @@
   <script setup lang="ts">
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
-  import axios from 'axios'
+  //import axios from 'axios'
+  import api from '@/utils/http'
   const apiBase = import.meta.env.VITE_API_BASE
-
+  
   const router = useRouter()
   
   // 表单字段
@@ -63,8 +64,8 @@
   const isFormValid = computed(() => {
     return username.value.trim() !== '' && password.value.length >= 6
   })
-  
-  // // 模拟用户数据
+
+    // // 模拟用户数据
   // const mockUsers = [
   //   { username: 'aaa', password: '123456' },
   //   { username: 'bob', password: 'password' }
@@ -92,15 +93,21 @@
   // 登录验证（调用后端接口）
   const handleLogin = async () => {
     try {
+      //const res = await axios.post('http://host.docker.internal:8080/login', {
       console.log("login request" + apiBase)
-      const res = await axios.post(`${apiBase}/login`, {
+      // const res = await axios.post(`${apiBase}/login`, {
+      // //const res = await axios.post('/api/login', {
+      //   username: username.value,
+      //   password: password.value
+      // })
+      const res = await api.post('/login', {
         username: username.value,
         password: password.value
       })
 
       // 设置用户名到 localStorage
       localStorage.setItem('username', res.data.username)
-
+      localStorage.setItem('token', res.data.token)       // 新增：保存 token
       // 登录成功：跳转聊天室
       console.log('登录成功：', res.data)
       errorMessage.value = ''

@@ -173,7 +173,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import axios from 'axios'
+//import axios from 'axios'
+import api from '@/utils/http'
 const apiBase = import.meta.env.VITE_API_BASE
 const socketMap: Record<string, WebSocket> = {}
 const socketReadyMap: Record<string, Promise<void>> = {}
@@ -225,8 +226,14 @@ const isAtBottom = () => {
 // ========================== 登录后加载聊天室 ==========================
 
 onMounted(async () => {
+  console.log('Chatroom.vue mounted')
   try {
-    const res = await axios.get(`${apiBase}/chatrooms/user/${username}`)
+    //const res = await axios.get(`${apiBase}/chatrooms/user/${username}`)
+    console.log('token in Chatroom.vue', localStorage.getItem('token'))
+    console.log('正要发请求拉取聊天室列表')
+    //const res = await axios.get(`/api/chatrooms/user/${username}`)
+    const res = await api.get(`/chatrooms/user/${username}`)
+
     const rooms = res.data.rooms || []
     rooms.forEach((room: any) => {
       const roomId = room.room_id || room.id //优先用 room.room_id
@@ -262,7 +269,7 @@ const handleSearchRoom = async () => {
   if (!searchRoomId.value.trim()) return
 
   try {
-    const response = await axios.get(`${apiBase}/chatrooms/${searchRoomId.value.trim()}`)
+    const response = await api.get(`${apiBase}/chatrooms/${searchRoomId.value.trim()}`)
     foundRoom.value = response.data
     searchError.value = ''
     showSearchModal.value = true // 显示弹窗
@@ -275,7 +282,7 @@ const handleSearchRoom = async () => {
 //加入
 const joinChatroom = async (roomId: string) => {
   try {
-    await axios.post('${apiBase}/chatrooms/join', {
+    await api.post('${apiBase}/chatrooms/join', {
       username,
       chatroom_id: roomId
     })
@@ -301,11 +308,7 @@ const username = localStorage.getItem('username') || '未知用户'
 //const socket = ref<WebSocket | null>(null)
 // const sockets = ref<{ [key: string]: WebSocket }>({})
 const sockets = ref<Record<string, WebSocket>>({}) // 此处有修改
-// const chatrooms = ref([
-//   { id: 1, name: 'Chatroom Guide', isPrivate: false, unread: 0 },
-//   { id: 2, name: '项目讨论组', isPrivate: true, unread: 2 },
-//   { id: 3, name: '前端频道', isPrivate: false, unread: 5 },
-// ])
+
 const chatrooms = ref<{ id: string; name: string; isPrivate: boolean; unread: number }[]>([])
 const forcePort = ref<number | null>(null)
 
@@ -324,7 +327,7 @@ const messages = computed(() =>
 const connectWebSocket = async (roomId: string) => {
     if (sockets.value[roomId]) return;
 
-    const res = await axios.get(`${apiBase}/chatrooms/${roomId}/enter`, {
+    const res = await api.get(`${apiBase}/chatrooms/${roomId}/enter`, {
         params: { username }
     });
     if (res.status !== 200) {
@@ -447,6 +450,7 @@ onBeforeUnmount(() => {
 const logout = () => {
   alert('已登出，欢迎下次再来')
   localStorage.removeItem('username')
+  localStorage.removeItem('token') // 新增
   location.href = '/'
 }
 
@@ -463,7 +467,7 @@ const createRoomConfirm = async () => {
   }
 
   try {
-    const response = await axios.post('${apiBase}/chatrooms', {
+    const response = await api.post('${apiBase}/chatrooms', {
       name: newRoomName.value.trim(),
       is_private: newRoomPrivacy.value === 'private',
       created_by: username
@@ -660,7 +664,7 @@ const confirmExitChatroom = async () => {
   if (!exitRoomToConfirm.value) return
 
   try {
-    await axios.post('${apiBase}/chatrooms/exit', {
+    await api.post('${apiBase}/chatrooms/exit', {
       username,
       chatroom_id: exitRoomToConfirm.value.id,
     })
