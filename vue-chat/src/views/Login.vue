@@ -1,28 +1,28 @@
 <template>
     <div class="login-container">
-      <h2>登录</h2>
+      <h2>Login</h2>
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="username">用户名</label>
+          <label for="username">Username</label>
           <input
             id="username"
             v-model="username"
             type="text"
-            placeholder="请输入用户名"
+            placeholder="Please enter your username"
           />
         </div>
   
         <div class="form-group">
-          <label for="password">密码</label>
+          <label for="password">Password</label>
           <div class="password-wrapper">
             <input
               id="password"
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
-              placeholder="请输入密码"
+              placeholder="Please enter your password"
             />
             <button type="button" @click="togglePassword" class="toggle-btn">
-              {{ showPassword ? '隐藏' : '显示' }}
+              {{ showPassword ? 'Hide' : 'Show' }}
             </button>
           </div>
         </div>
@@ -30,11 +30,11 @@
         <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
   
         <button type="submit" :disabled="!isFormValid" class="login-button">
-          登录
+          Login
         </button>
   
         <p class="link-text">
-          还没有账号？<a @click.prevent="goToRegister" href="#">去注册</a>
+          Don't have an account yet?<a @click.prevent="goToRegister" href="#">Sign up</a>
         </p>
       </form>
     </div>
@@ -49,48 +49,24 @@
   
   const router = useRouter()
   
-  // 表单字段
+  
   const username = ref('')
   const password = ref('')
   const showPassword = ref(false)
   const errorMessage = ref('')
   
-  // 密码可见切换
+  // hide/show password
   const togglePassword = () => {
     showPassword.value = !showPassword.value
   }
   
-  // 表单校验：用户名非空，密码至少6位
+  // Username must not be empty, and password must be at least 6 characters long.
   const isFormValid = computed(() => {
     return username.value.trim() !== '' && password.value.length >= 6
   })
 
-    // // 模拟用户数据
-  // const mockUsers = [
-  //   { username: 'aaa', password: '123456' },
-  //   { username: 'bob', password: 'password' }
-  // ]
-  
-  // // 模拟登录验证
-  // const handleLogin = () => {
-  //   const match = mockUsers.find(
-  //     (user) =>
-  //       user.username === username.value &&
-  //       user.password === password.value
-  //   )
-  
-  //   if (match) {
-  //     console.log('登录成功！')
-  //     errorMessage.value = ''
-  //     router.push('/chatroom')//跳转到聊天室界面
-  //   } else {
-  //     console.log('登录失败：用户名或密码错误')
-  //     errorMessage.value = '用户名或密码错误，请重新输入'
-  //   }
-  // }
 
-
-  // 登录验证（调用后端接口）
+  // handle login
   const handleLogin = async () => {
     try {
       //const res = await axios.post('http://host.docker.internal:8080/login', {
@@ -105,23 +81,23 @@
         password: password.value
       })
 
-      // 设置用户名到 localStorage
+      // set username and token in localStorage
       localStorage.setItem('username', res.data.username)
-      localStorage.setItem('token', res.data.token)       // 新增：保存 token
-      // 登录成功：跳转聊天室
-      console.log('登录成功：', res.data)
+      localStorage.setItem('token', res.data.token)
+      // login successful
+      console.log('login successful：', res.data)
       errorMessage.value = ''
       router.push('/chatroom')
     } catch (err: any) {
       if (err.response?.data?.error) {
         errorMessage.value = err.response.data.error
       } else {
-        errorMessage.value = '登录请求失败，请稍后重试'
+        errorMessage.value = 'Login failed. Please try again later.'
       }
     }
   }
   
-  // 跳转到注册页
+  // sign up
   const goToRegister = () => {
     router.push('/register')
   }

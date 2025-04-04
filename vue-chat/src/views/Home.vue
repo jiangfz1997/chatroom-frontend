@@ -1,25 +1,25 @@
 <template>
     <div class="home-container">
-      <h1>欢迎来到聊天室</h1>
-      <p class="subtitle">请选择操作方式</p>
+      <h1>Welcome to the chatroom</h1>
+      <p class="subtitle">Let's chat freely and enjoy the conversation together!</p>
       <div class="button-group">
-        <button @click="goToLogin">登录</button>
-        <button @click="goToRegister">注册</button>
+        <button @click="goToLogin">Login</button>
+        <button @click="goToRegister">Sign Up</button>
       </div>
     </div>
   </template>
   
   <script setup lang="ts">
-  import { useRouter } from 'vue-router' // 第一步：引入 useRouter
-  const router = useRouter()             // 第二步：获取路由实例
-  // 暂时先用控制台模拟点击事件
+  import { useRouter } from 'vue-router' // import useRouter
+  const router = useRouter()             // router instance
+  
   const goToLogin = () => {
-    console.log("点击了登录")
+    console.log("login")
     router.push('/login')
   }
   
   const goToRegister = () => {
-    console.log("点击了注册")
+    console.log("register")
     router.push('/register')
   }
   </script>

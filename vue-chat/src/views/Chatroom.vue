@@ -1,6 +1,6 @@
 <template>
   <div class="chatroom-container">
-    <!-- 顶部导航栏 -->
+    <!-- Top bar -->
     <div class="top-bar">
       <input
         v-model="searchRoomId"
@@ -15,16 +15,9 @@
       </div>
     </div>
 
-    <!-- 主体区域 -->
+    <!-- Main area -->
     <div class="main-content">
-      <!-- 端口选择（开发用！） -->
-      <!-- <div class="port-selector">
-        <span>端口選擇：</span>
-        <button @click="forcePort = 8081">連 8081</button>
-        <button @click="forcePort = 8082">連 8082</button>
-        <span v-if="forcePort">（目前選擇：{{ forcePort }}）</span>
-      </div> -->
-      <!-- 左侧聊天室列表 -->
+      <!-- Left-side chatroom list -->
       <div class="sidebar">
         <div
           v-for="room in chatrooms"
@@ -35,19 +28,19 @@
           @contextmenu.prevent="openContextMenu($event, room)"
         >
           <span class="room-name">{{ room.name }}</span>
-          <span class="room-type">{{ room.isPrivate ? '私密' : '公开' }}</span>
+          <span class="room-type">{{ room.isPrivate ? 'Private' : 'Public' }}</span>
           <span v-if="room.unread > 0" class="unread">{{ room.unread }}</span>
 
         </div>
         <div class="chatroom-item create-room" @click="showCreateModal = true">
-          + 新建聊天室
+          + Create New Chatroom
         </div>
       </div>
 
-      <!-- 右侧聊天窗口 -->
+      <!-- Right-side chat window -->
       <div class="chat-window">
         <div v-if="!selectedRoom" class="placeholder-text">
-          选择一个聊天室开始聊天吧。
+          Select a chatroom to start chatting.
         </div>
         <div v-else class="chat-content">
           <h3>{{ selectedRoom.name }}</h3>
@@ -81,23 +74,23 @@
               v-model="newMessage"
               class="message-input"
               type="text"
-              placeholder="请输入消息..."
+              placeholder="Please enter your message..."
               @keyup.enter="sendMessage"
             />
-            <button class="send-button" @click="sendMessage">发送</button>
+            <button class="send-button" @click="sendMessage">Send</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 新建聊天室弹窗 -->
+    <!-- Create Chatroom Popup -->
     <div class="modal-overlay" v-if="showCreateModal">
       <div class="modal-content">
-        <h3>创建新聊天室</h3>
+        <h3>Create your new chatroom</h3>
         
-        <!-- 创建成功前显示输入和选项 -->
+        <!-- chatroom elements -->
         <template v-if="!createSuccessMessage">
-          <input v-model="newRoomName" placeholder="聊天室名称" class="modal-input" />
+          <input v-model="newRoomName" placeholder="Chatroom name" class="modal-input" />
           <select v-model="newRoomPrivacy" class="modal-select">
             <option value="public">Public</option>
             <option value="private">Private</option>
@@ -108,7 +101,7 @@
           </div>
         </template>
 
-        <!-- 创建成功后提示 -->
+        <!-- successful tip -->
         <template v-else>
           <p class="success-message">{{ createSuccessMessage }}</p>
           <!-- <p class="reminder">Please save your chatroom ID, which is the only way your members can find your chatroom.</p> -->
@@ -119,10 +112,10 @@
       </div>
     </div>
 
-    <!-- 搜索聊天室结果弹窗 -->
+    <!-- Search Chatroom Result Popup -->
     <div class="modal-overlay" v-if="showSearchModal">
       <div class="modal-content">
-        <!-- 成功找到了聊天室 -->
+        <!-- successful -->
         <div v-if="foundRoom">
           <h3>We've found your chatroom</h3>
           <p><strong>Name:</strong> {{ foundRoom.name }}</p>
@@ -133,7 +126,7 @@
           </div>
         </div>
 
-        <!-- 没有找到聊天室 -->
+        <!-- fail -->
         <div v-else>
           <p>{{ searchError }}</p>
           <div class="modal-buttons">
@@ -143,7 +136,7 @@
       </div>
     </div>
 
-    <!-- 退出聊天室确认弹窗 -->
+    <!-- exit chatroom -->
     <div v-if="showExitConfirm" class="modal-overlay">
       <div class="modal-content">
         <h3>Exit this chatroom?</h3>
@@ -155,7 +148,7 @@
       </div>
     </div>
 
-    <!-- 右键菜单 -->
+    <!-- Right-click Menu -->
     <ul
       v-if="contextMenuVisible"
       class="context-menu"
@@ -180,11 +173,11 @@ const base_wsUrl = import.meta.env.VITE_WS_BASE_URL || `${location.origin.replac
 // const socketMap: Record<string, WebSocket> = {}
 const socketReadyMap: Record<string, Promise<void>> = {}
 const socketReadyResolvers: Record<string, () => void> = {}
-// ========================== 通用函数 ==============================
+// ========================== Utility function ==============================
 function handleContextMenuClick() {
-  // 可以留空，避免 TS 报错
+  // left empty to avoid TypeScript errors.
 }
-// 封装：添加聊天室到侧边栏
+// Add chatroom to sidebar
 const addChatroomToSidebar = (room: { id: string, name: string, isPrivate: boolean }) => {
   if (!chatrooms.value.some(r => r.id === room.id)) {
     chatrooms.value.push({
@@ -204,7 +197,7 @@ const scrollToBottom = () => {
       if (el) {
         el.scrollTop = el.scrollHeight - el.clientHeight
         console.log(
-          '滚动到底部 scrollTop:',
+          'Scroll to bottom scrollTop:',
           el.scrollTop,
           'scrollHeight:',
           el.scrollHeight,
@@ -219,29 +212,29 @@ const scrollToBottom = () => {
 const isAtBottom = () => {
   const el = messageContainer.value
   if (!el) return false
-  return el.scrollTop + el.clientHeight >= el.scrollHeight - 10 // 容差10px
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 10 // tolerance 10px
 }
 
 
 
 
 
-// ========================== 登录后加载聊天室 ==========================
+// ========================== Load chatrooms after login ==========================
 
 onMounted(async () => {
   console.log('Chatroom.vue mounted')
   try {
     //const res = await axios.get(`${apiBase}/chatrooms/user/${username}`)
     console.log('token in Chatroom.vue', localStorage.getItem('token'))
-    console.log('正要发请求拉取聊天室列表')
+    console.log('Plan to send a request to fetch the chatroom list')
     //const res = await axios.get(`/api/chatrooms/user/${username}`)
     const res = await api.get(`/chatrooms/user/${username}`)
 
     const rooms = res.data.rooms || []
     rooms.forEach((room: any) => {
-      const roomId = room.room_id || room.id //优先用 room.room_id
+      const roomId = room.room_id || room.id //Prefer using room.room_id
       if (!roomId || typeof roomId !== 'string') {
-        console.warn('跳过无效 room:', room)
+        console.warn('Skip invalid room:', room)
         return
       }
 
@@ -256,18 +249,18 @@ onMounted(async () => {
       connectWebSocket(roomId)
     })
   } catch (err) {
-    console.error('加载聊天室失败:', err)
+    console.error('Load chatroom failed:', err)
   }
 })
 
 
-//搜索聊天室加入
+//search chatroom to join
 const searchRoomId = ref('')
 const showSearchModal = ref(false)
 const foundRoom = ref<{ id: string; name: string } | null>(null)
 const searchError = ref('')
 
-// 执行搜索请求
+// handle searchroom
 const handleSearchRoom = async () => {
   if (!searchRoomId.value.trim()) return
 
@@ -275,14 +268,14 @@ const handleSearchRoom = async () => {
     const response = await api.get(`${apiBase}/chatrooms/${searchRoomId.value.trim()}`)
     foundRoom.value = response.data
     searchError.value = ''
-    showSearchModal.value = true // 显示弹窗
+    showSearchModal.value = true // show popup
   } catch (err) {
     foundRoom.value = null
     searchError.value = 'The chatroom does not exist. Please check your chatroom ID.'
     showSearchModal.value = true
   }
 }
-//加入
+//join chatroom
 const joinChatroom = async (roomId: string) => {
   try {
     await api.post(`${apiBase}/chatrooms/join`, {
@@ -300,32 +293,32 @@ const joinChatroom = async (roomId: string) => {
     searchRoomId.value = ''
     selectRoom(chatrooms.value.find(room => room.id === roomId)!)
   } catch (err) {
-    console.error('加入聊天室失败：', err)
-    searchError.value = '加入聊天室失败，请稍后再试'
+    console.error('join chatroom failed：', err)
+    searchError.value = 'Failed to join the chatroom. Please try again later.'
     foundRoom.value = null
   }
 }
 
 
-const username = localStorage.getItem('username') || '未知用户'
+const username = localStorage.getItem('username') || 'Unknown user'
 //const socket = ref<WebSocket | null>(null)
 // const sockets = ref<{ [key: string]: WebSocket }>({})
-const sockets = ref<Record<string, WebSocket>>({}) // 此处有修改
+const sockets = ref<Record<string, WebSocket>>({}) 
 
 const chatrooms = ref<{ id: string; name: string; isPrivate: boolean; unread: number }[]>([])
 // const forcePort = ref<number | null>(null)
 
-//选择聊天室开始聊天
+//choose a chatroom to start chatting
 const selectedRoom = ref<null | typeof chatrooms.value[0]>(null)
 //const messages = ref<{ sender: string; text: string }[]>([])
 const newMessage = ref('')
 //const messageMap = ref<Record<string, { sender: string; text: string }[]>>({})
-const messageMap = ref<Record<string, { sender: string; text: string; timestamp?: string }[]>>({}) //此处有修改
+const messageMap = ref<Record<string, { sender: string; text: string; timestamp?: string }[]>>({}) 
 const messages = computed(() =>
   selectedRoom.value ? messageMap.value[selectedRoom.value.id] || [] : []
 )
 
-// 建立 WebSocket 连接
+// Establish WebSocket connection
 
 const connectWebSocket = async (roomId: string) => {
     if (sockets.value[roomId]) return;
@@ -334,14 +327,14 @@ const connectWebSocket = async (roomId: string) => {
         params: { username }
     });
     if (res.status !== 200) {
-        console.error('获取 WebSocket URL 失败:', res.statusText);
+        console.error('Failed to retrieve WebSocket URL:', res.statusText);
         return;
     }
     if (!res.data || !res.data.ws_url) {
-        console.error('无效的 WebSocket URL:', res.data);
+        console.error('Invalid WebSocket URL:', res.data);
         return;
     }
-    // console.log('获取 WebSocket URL:', res.data.ws_url);
+    // console.log('retrieve WebSocket URL:', res.data.ws_url);
     // const wsUrl = res.data.ws_url;
     // console.log("ws url:", `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`)
     // const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
@@ -357,7 +350,7 @@ const connectWebSocket = async (roomId: string) => {
     });
 
     socket.onopen = () => {
-        console.log('WebSocket 已连接');
+        console.log('WebSocket connected');
         socketReadyResolvers[roomId]();
         if (!messageMap.value[roomId]) {
             messageMap.value[roomId] = [];
@@ -367,14 +360,14 @@ const connectWebSocket = async (roomId: string) => {
     socket.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
-            console.log('收到 WebSocket 消息:', msg);
+            console.log('Receive Websocket message:', msg);
 
             if (!messageMap.value[roomId]) messageMap.value[roomId] = [];
 
-            // 根据消息类型处理
+            // Handle based on message type
             switch (msg.type) {
                 case "message":
-                    // 实时消息，规范化后存入 messageMap
+                    // Real-time message, normalize and store into messageMap
                     const normalizedMsg = {
                         sender: msg.sender,
                         text: msg.text,
@@ -388,55 +381,54 @@ const connectWebSocket = async (roomId: string) => {
                     break;
 
                 case "history_result":
-                    // 历史消息由 fetchHistoryViaWebSocket 处理，这里忽略
-                    console.log("收到 history_result，交由 fetchHistoryViaWebSocket 处理");
+                    // Historical messages are handled by fetchHistoryViaWebSocket, ignore them here.
+                    console.log("Received history_result, delegate to fetchHistoryViaWebSocket for processing.");
                     break;
 
                 default:
-                    console.warn("未知消息类型:", msg.type);
+                    console.warn("Unknown message type:", msg.type);
             }
         } catch (err) {
-            console.error('消息解析失败：', err);
+            console.error('Failed to parse message：', err);
         }
     };
 
     socket.onerror = (error) => {
-        console.error('WebSocket 错误:', error);
+        console.error('WebSocket error:', error);
     };
 
     socket.onclose = () => {
-        console.log('WebSocket 已关闭');
+        console.log('WebSocket closed');
         delete sockets.value[roomId];
     };
 };
 
-// 切换聊天室
+// select room
 const selectRoom = async (room: typeof chatrooms.value[0]) => {
-  console.log('点击事件触发，room:', room)
+  console.log('select room:', room)
 
   selectedRoom.value = room
   console.log("123123123:", messageMap.value[room.id]);
-  // if (!messages.value[room.id]) messages.value[room.id] = [] // 确保有初始化
-  if (!messageMap.value[room.id]) messageMap.value[room.id] = []
+  if (!messageMap.value[room.id]) messageMap.value[room.id] = []//initialize
   room.unread = 0
   connectWebSocket(room.id)
 
   await socketReadyMap[room.id]
-  console.log('WebSocket 连接状态：', sockets.value[room.id]?.readyState)
+  console.log('WebSocket state：', sockets.value[room.id]?.readyState)
   if (sockets.value[room.id]?.readyState === WebSocket.OPEN) {
-    console.log('WebSocket 已连接')
+    console.log('WebSocket connected')
   } else {
-    console.log('WebSocket 未连接')
+    console.log('WebSocket not connected')
   }
-  // loadHistory(room.id) // 此处有修改：切换后请求历史记录
+  // loadHistory(room.id) //load history
   scrollToBottom()
 }
 
-// 发送消息
+// send message
 const sendMessage = () => {
   if (!newMessage.value.trim() || !selectedRoom.value) return
   const roomId = selectedRoom.value.id
-  const socket = sockets.value[roomId] // 此处有修改
+  const socket = sockets.value[roomId] 
   if (socket?.readyState === WebSocket.OPEN) {
     const msg = { type:"message", sender: username, text: newMessage.value.trim() }
     socket.send(JSON.stringify(msg))
@@ -447,22 +439,22 @@ const sendMessage = () => {
   }
 }
 
-// 页面关闭前断开连接
+// Disconnect before the page is closed
 onBeforeUnmount(() => {
   // if (socket.value) {
   //   socket.value.close()
   // }
-  Object.values(sockets.value).forEach(s => s.close()) // 此处有修改
+  Object.values(sockets.value).forEach(s => s.close()) 
 })
 
 const logout = () => {
-  alert('已登出，欢迎下次再来')
+  alert('You have logged out. See you next time!')
   localStorage.removeItem('username')
-  localStorage.removeItem('token') // 新增
+  localStorage.removeItem('token') 
   location.href = '/'
 }
 
-//create chatroom创建聊天室
+//create chatroom
 const showCreateModal = ref(false)
 const newRoomName = ref('')
 const newRoomPrivacy = ref<'public' | 'private'>('public')
@@ -470,7 +462,7 @@ const createSuccessMessage = ref('')
 
 const createRoomConfirm = async () => {
   if (!newRoomName.value.trim()) {
-    createSuccessMessage.value = '聊天室名称不能为空'
+    createSuccessMessage.value = 'Chatroom name cannot be empty'
     return
   }
 
@@ -483,7 +475,7 @@ const createRoomConfirm = async () => {
 
     const roomId = response.data.room_id
     createSuccessMessage.value = `Create successfully! Your chatroom ID is ${roomId}.\nPlease save your chatroom ID, which is the only way your members can find your chatroom.`
-    // 添加到聊天室列表
+    // Add to chatroom list
     const newRoom = {
       id: roomId,
       name: newRoomName.value.trim(),
@@ -493,13 +485,13 @@ const createRoomConfirm = async () => {
     //chatrooms.value.push(newRoom)
     addChatroomToSidebar(newRoom)
     messageMap.value[roomId] = []
-    // 自动选中该聊天室
+    // select this chatroom
     selectedRoom.value = newRoom
     connectWebSocket(newRoom.id)
 
   } catch (error) {
-    createSuccessMessage.value = '创建失败，请稍后再试'
-    console.error('创建聊天室失败:', error)
+    createSuccessMessage.value = 'Creation failed. Please try again later.'
+    console.error('Creation failed:', error)
   }
 }
 //取消创建
@@ -513,10 +505,10 @@ const closeCreateModal = () => {
 
 
 
-const messageContainer = ref<HTMLElement | null>(null) // 此处有修改
-const noMoreMessages = ref<Record<string, boolean>>({}) // 此处有修改
-const loadingHistory = ref(false) // 此处有修改
-const pageSize = 20 // 此处有修改
+const messageContainer = ref<HTMLElement | null>(null) 
+const noMoreMessages = ref<Record<string, boolean>>({}) 
+const loadingHistory = ref(false) 
+const pageSize = 20 
 
 const loadHistory = async (roomId: string) => {
   if (loadingHistory.value || noMoreMessages.value[roomId]) return
@@ -524,21 +516,21 @@ const loadHistory = async (roomId: string) => {
 
   const existing = messageMap.value[roomId] || []
   const lastTimestamp = existing.length > 0 ? existing[0].timestamp : ''
-  console.log("发送前的时间戳 before:", lastTimestamp)
+  console.log("last timestamp before:", lastTimestamp)
   console.log("before fetching old", messageMap.value[roomId])
 
   try {
     const older = await fetchHistoryViaWebSocket(roomId, lastTimestamp, pageSize);
-    console.log('历史消息加载结果：', older);
+    console.log('load history：', older);
     console.log("before loading old", messageMap.value[roomId])
     if (!Array.isArray(older) || older.length === 0) {
         noMoreMessages.value[roomId] = true;
         return;
     }
 
-    // 规范化消息格式
+    // Normalize message format
     const normalizedOlder = older.map(msg => ({
-        sender: msg.sender || msg.Sender, // 兼容 DynamoDB 和实时消息
+        sender: msg.sender || msg.Sender, // Compatible with DynamoDB and real-time message
         text: msg.text || msg.Text,
         timestamp: msg.timestamp || msg.sentAt,
         roomId: msg.room_id || msg.roomID,
@@ -548,69 +540,38 @@ const loadHistory = async (roomId: string) => {
         ...normalizedOlder.reverse(),
         ...(messageMap.value[roomId] || []),
     ];
-    console.log("更新后 messageMap:", messageMap.value[roomId]);
+    console.log("update messageMap:", messageMap.value[roomId]);
 } catch (e) {
-    console.error('加载历史消息失败', e);
+    console.error('load history failed', e);
 } finally {
     loadingHistory.value = false;
 }
 }
 
-// const loadHistory = async (roomId: string) => { // 此处有修改
-//   if (loadingHistory.value || noMoreMessages.value[roomId]) return // 此处有修改
-//   loadingHistory.value = true // 此处有修改
-//   const existing = messageMap.value[roomId] || [] // 此处有修改
-//   //const lastTimestamp = existing[0]?.timestamp || '' // 此处有修改
-//   const lastTimestamp = existing.length > 0 ? existing[0].timestamp : '' 
-//   console.log("发送前的时间戳 before:", lastTimestamp)
-
-//   try {
-//     const res = await axios.get(`${apiBase}/messages/${roomId}`, {
-//       params: {
-//         username,
-//         before: lastTimestamp,
-//         limit: pageSize,
-//       }
-//     })
-//     const older = res.data.messages
-//     console.log('历史消息加载结果：', older)
-//     if (!Array.isArray(older) || older.length === 0) {
-//       noMoreMessages.value[roomId] = true
-//       return
-//     } else {
-//       messageMap.value[roomId] = [...older.reverse(), ...existing] // 此处有修改
-//     }
-//   } catch (e) {
-//     console.error('加载历史消息失败', e)
-//   } finally {
-//     loadingHistory.value = false
-//   }
-// } // 此处有修改
-
 function fetchHistoryViaWebSocket(roomId: string, before: string|undefined, limit: number): Promise<any[]> {
     return new Promise((resolve, reject) => {
         const socket = sockets.value[roomId];
         if (!socket) {
-            reject(new Error("WebSocket 未连接"));
+            reject(new Error("WebSocket is not connected"));
             return;
         }
 
         const handler = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log("收到 WebSocket 消息:", data); // 调试原始数据
+                console.log("Receive WebSocket message:", data); // raw data
                 if (data.type === "history_result" && data.roomID === roomId) {
                     socket.removeEventListener("message", handler);
                     if (Array.isArray(data.messages)) {
-                        console.log("处理历史消息:", data.messages); // 调试处理后的数据
-                        resolve(data.messages); // 确保只返回 messages
+                        console.log("handle history message:", data.messages); // after processing
+                        resolve(data.messages); // only return messages
                     } else {
-                        console.warn("⚠️ messages 字段无效:", data);
+                        console.warn("Invalid messages field:", data);
                         resolve([]);
                     }
                 }
             } catch (e) {
-                console.error("⚠️ 解析 WebSocket 消息失败:", e);
+                console.error("Failed to parse WebSocket message:", e);
                 resolve([]);
             }
         };
@@ -622,47 +583,38 @@ function fetchHistoryViaWebSocket(roomId: string, before: string|undefined, limi
         socket.send(JSON.stringify(request));
         console.log("before 2222", messageMap.value[roomId])
 
-        console.log("🛰️ 发送 fetch_history 请求:", request);
+        console.log("Send fetch_history request:", request);
 
         setTimeout(() => {
             socket.removeEventListener("message", handler);
-            reject(new Error("拉取历史消息超时"));
+            reject(new Error("Fetching historical messages timed out"));
         }, 5000);
     });
 }
 
-// const handleScroll = () => { // 此处有修改
-//   const el = messageContainer.value
-//   if (!el || !selectedRoom.value) return
-//   console.log("el.scrollTop current:", el.scrollTop)
-//   if (el.scrollTop <= 5) {
-//     console.log("检测到滚动，scrollTop:", el.scrollTop)
-//     loadHistory(selectedRoom.value.id)
-//   }
-// } // 此处有修改
 
-//退出聊天室
+//exit chatroom
 const showExitConfirm = ref(false)
 const exitRoomToConfirm = ref<{ id: string; name: string } | null>(null)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuVisible = ref(false)
 const contextMenuRoom = ref<null | typeof chatrooms.value[0]>(null)
 
-// 打开右键菜单
+// open right-click menu
 const openContextMenu = (e: MouseEvent, room: typeof chatrooms.value[0]) => {
   contextMenuVisible.value = true
   contextMenuRoom.value = room
   contextMenuPosition.value = { x: e.clientX, y: e.clientY }
 }
 
-// 点菜单中的“退出聊天室”
+// exit click
 const handleExitClick = () => {
   exitRoomToConfirm.value = contextMenuRoom.value
   showExitConfirm.value = true
   contextMenuVisible.value = false
 }
 
-// 点击菜单外区域隐藏菜单
+// Click outside the menu to hide it
 document.addEventListener('click', () => {
   contextMenuVisible.value = false
 })
@@ -677,30 +629,30 @@ const confirmExitChatroom = async () => {
       chatroom_id: exitRoomToConfirm.value.id,
     })
 
-    // 1. 移除聊天室
+    // remove chatroom
     chatrooms.value = chatrooms.value.filter(r => r.id !== exitRoomToConfirm.value?.id)
 
-    // 2. 清除 websocket
+    // delete websocket
     const socket = sockets.value[exitRoomToConfirm.value.id]
     if (socket) {
       socket.close()
       delete sockets.value[exitRoomToConfirm.value.id]
     }
 
-    // 3. 清除消息记录
+    // delete messagemap
     delete messageMap.value[exitRoomToConfirm.value.id]
 
-    // 4. 如果是当前选中的聊天室，取消选中状态
+    // If it's the currently selected chatroom, deselect it
     if (selectedRoom.value?.id === exitRoomToConfirm.value.id) {
       selectedRoom.value = null
     }
 
-    // 5. 关闭弹窗
+    // close popup
     showExitConfirm.value = false
     exitRoomToConfirm.value = null
   } catch (err) {
-    console.error('退出聊天室失败:', err)
-    alert('退出失败，请稍后再试')
+    console.error('Failed to exit the chatroom:', err)
+    alert('Failed to exit the chatroom. Please try again later.')
   }
 }
 
@@ -846,9 +798,9 @@ const confirmExitChatroom = async () => {
 
 .chat-content {
   flex: 1;
-  display: flex;                /*新增 */
-  flex-direction: column;       /*新增 */
-  overflow: hidden;             /*替换 overflow-y 为 overflow，避免双滚动 */
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden;
   padding: 20px;
   padding-bottom: 80px;
 }
@@ -1006,13 +958,13 @@ const confirmExitChatroom = async () => {
   text-decoration: underline;
   margin-bottom: 12px;
   transition: opacity 0.3s;
-} /* 此处有新增 */
+}
 
 .history-loader.no-more {
   color: #aaa;
   cursor: default;
   text-decoration: none;
-} /* 此处有新增 */
+} 
 
 .context-menu {
   position: fixed;

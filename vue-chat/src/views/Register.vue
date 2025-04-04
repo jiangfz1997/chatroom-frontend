@@ -1,56 +1,56 @@
 <template>
     <div class="register-container">
-      <h2>注册</h2>
+      <h2>Sign Up</h2>
       <form @submit.prevent="handleRegister" class="register-form">
         <div class="form-group">
-          <label for="username">用户名</label>
+          <label for="username">Username</label>
           <input
             id="username"
             v-model="username"
             @blur="checkUsername"
             type="text"
-            placeholder="请输入用户名"
+            placeholder="Please enter your username"
           />
-          <p v-if="usernameTaken" class="error-text">该用户名已被占用</p>
+          <p v-if="usernameTaken" class="error-text">This username is already taken</p>
         </div>
   
         <div class="form-group">
-          <label for="password">密码</label>
+          <label for="password">Password</label>
           <div class="password-wrapper">
             <input
               id="password"
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
-              placeholder="请输入密码"
+              placeholder="Please enter your password"
             />
             <button type="button" class="toggle-btn" @click="togglePassword">
-              {{ showPassword ? '隐藏' : '显示' }}
+              {{ showPassword ? 'Hide' : 'Show' }}
             </button>
           </div>
           <p v-if="!isPasswordValid" class="error-text">
-            密码需为 6~18 位，仅包含字母、数字及常用符号
+            Password must be 6–18 characters long and contain only letters, numbers, and common symbols.
           </p>
         </div>
   
         <div class="form-group">
-          <label for="confirm">确认密码</label>
+          <label for="confirm">Confirm your password</label>
           <input
             id="confirm"
             v-model="confirmPassword"
             :type="showPassword ? 'text' : 'password'"
-            placeholder="请再次输入密码"
+            placeholder="Please enter your password again"
           />
-          <p v-if="passwordsMismatch" class="error-text">两次密码输入不一致</p>
+          <p v-if="passwordsMismatch" class="error-text">The two password entries do not match</p>
         </div>
   
         <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
   
         <button type="submit" :disabled="!canRegister" class="register-button">
-          注册
+          Sign Up
         </button>
   
         <p class="link-text">
-          已有账号？<a @click.prevent="goToLogin" href="#">去登录</a>
+          Already have an account?<a @click.prevent="goToLogin" href="#">Login</a>
         </p>
       </form>
     </div>
@@ -72,14 +72,14 @@
   const usernameTaken = ref(false)
   const successMessage = ref('')
   
-  // 模拟已存在的用户名
+  // existing usernames
   const existingUsers = ['aaa', 'bob']
   
   const checkUsername = () => {
     usernameTaken.value = existingUsers.includes(username.value.trim())
   }
   
-  // 新密码规则：6~18 位，允许英文 + 数字 + 常见符号
+  // password rule
   const isPasswordValid = computed(() =>
     /^[A-Za-z0-9!@#$%^&*()_\-+=\[\]{}|\\:;"'<>,.?/~`]{6,18}$/.test(password.value)
   )
@@ -101,12 +101,6 @@
     showPassword.value = !showPassword.value
   }
   
-  // const handleRegister = () => {
-  //   successMessage.value = '注册成功！即将跳转至登录页面...'
-  //   setTimeout(() => {
-  //     router.push('/login')
-  //   }, 2000)
-  // }
   const handleRegister = async () => {
   try {
     const res = await api.post(`${apiBase}/register`, {
@@ -114,21 +108,21 @@
       password: password.value,
     })
 
-    // 注册成功提示
-    successMessage.value = res.data.message || '注册成功！即将跳转至登录页面...'
+    // Registration success message
+    successMessage.value = res.data.message || 'Registration successful! Redirecting to the login page...'
 
-    // 2 秒后跳转到登录页
+    // redirect after 2s
     setTimeout(() => {
       router.push('/login')
     }, 2000)
   } catch (err: any) {
     successMessage.value = ''
 
-    // 如果后端返回了错误信息
+    // backend error response
     if (err.response?.data?.error) {
       alert(err.response.data.error)
     } else {
-      alert('请求失败，请稍后再试')
+      alert('Request failed. Please try again later.')
     }
   }
 }
