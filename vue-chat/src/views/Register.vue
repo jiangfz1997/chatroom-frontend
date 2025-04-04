@@ -57,11 +57,11 @@
   </template>
   
   <script setup lang="ts">
-  import axios from 'axios'
+  // import axios from 'axios'
   import api from '@/utils/http'
   import { ref, computed } from 'vue'
   import { useRouter } from 'vue-router'
-  const apiBase = import.meta.env.VITE_API_BASE
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
 
   const router = useRouter()
   

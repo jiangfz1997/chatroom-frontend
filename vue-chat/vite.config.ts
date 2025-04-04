@@ -18,11 +18,11 @@ export default defineConfig({
     usePolling: true,
     },
     proxy: {
-      '/api': {
-        target: 'http://host.docker.internal:8080', // ✅ 開發時後端地址
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+      // '/api': {
+      //   target: 'http://host.docker.internal:8080', // ✅ 開發時後端地址
+      //   changeOrigin: true,
+      //   rewrite: (path) => path.replace(/^\/api/, ''),
+      // },
     }
   },
 })

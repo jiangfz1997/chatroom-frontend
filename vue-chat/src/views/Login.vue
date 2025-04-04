@@ -45,7 +45,7 @@
   import { useRouter } from 'vue-router'
   //import axios from 'axios'
   import api from '@/utils/http'
-  const apiBase = import.meta.env.VITE_API_BASE
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   
   const router = useRouter()
   

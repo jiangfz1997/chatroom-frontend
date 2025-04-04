@@ -18,12 +18,12 @@
     <!-- 主体区域 -->
     <div class="main-content">
       <!-- 端口选择（开发用！） -->
-      <div class="port-selector">
+      <!-- <div class="port-selector">
         <span>端口選擇：</span>
         <button @click="forcePort = 8081">連 8081</button>
         <button @click="forcePort = 8082">連 8082</button>
         <span v-if="forcePort">（目前選擇：{{ forcePort }}）</span>
-      </div>
+      </div> -->
       <!-- 左侧聊天室列表 -->
       <div class="sidebar">
         <div
@@ -175,12 +175,15 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 //import axios from 'axios'
 import api from '@/utils/http'
-const apiBase = import.meta.env.VITE_API_BASE
-const socketMap: Record<string, WebSocket> = {}
+const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+const base_wsUrl = import.meta.env.VITE_WS_BASE_URL || `${location.origin.replace(/^http/, 'ws')}/ws`
+// const socketMap: Record<string, WebSocket> = {}
 const socketReadyMap: Record<string, Promise<void>> = {}
 const socketReadyResolvers: Record<string, () => void> = {}
 // ========================== 通用函数 ==============================
-
+function handleContextMenuClick() {
+  // 可以留空，避免 TS 报错
+}
 // 封装：添加聊天室到侧边栏
 const addChatroomToSidebar = (room: { id: string, name: string, isPrivate: boolean }) => {
   if (!chatrooms.value.some(r => r.id === room.id)) {
@@ -282,7 +285,7 @@ const handleSearchRoom = async () => {
 //加入
 const joinChatroom = async (roomId: string) => {
   try {
-    await api.post('${apiBase}/chatrooms/join', {
+    await api.post(`${apiBase}/chatrooms/join`, {
       username,
       chatroom_id: roomId
     })
@@ -310,7 +313,7 @@ const username = localStorage.getItem('username') || '未知用户'
 const sockets = ref<Record<string, WebSocket>>({}) // 此处有修改
 
 const chatrooms = ref<{ id: string; name: string; isPrivate: boolean; unread: number }[]>([])
-const forcePort = ref<number | null>(null)
+// const forcePort = ref<number | null>(null)
 
 //选择聊天室开始聊天
 const selectedRoom = ref<null | typeof chatrooms.value[0]>(null)
@@ -339,10 +342,14 @@ const connectWebSocket = async (roomId: string) => {
         return;
     }
     // console.log('获取 WebSocket URL:', res.data.ws_url);
-    const wsUrl = res.data.ws_url;
+    // const wsUrl = res.data.ws_url;
     // console.log("ws url:", `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`)
     // const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
-    const socket = new WebSocket(wsUrl);
+    // const wsUrl = `ws://3.135.215.221/ws/${roomId}?username=${username}`
+    console.log("base_wsUrl:", base_wsUrl)
+    var final_wsurl = `${base_wsUrl}/${roomId}?username=${username}`
+    console.log("ws url:", final_wsurl)
+    const socket = new WebSocket(final_wsurl);
     sockets.value[roomId] = socket;
 
     socketReadyMap[roomId] = new Promise<void>((resolve) => {
@@ -409,7 +416,8 @@ const selectRoom = async (room: typeof chatrooms.value[0]) => {
 
   selectedRoom.value = room
   console.log("123123123:", messageMap.value[room.id]);
-  if (!messages.value[room.id]) messages.value[room.id] = [] // 确保有初始化
+  // if (!messages.value[room.id]) messages.value[room.id] = [] // 确保有初始化
+  if (!messageMap.value[room.id]) messageMap.value[room.id] = []
   room.unread = 0
   connectWebSocket(room.id)
 
@@ -467,7 +475,7 @@ const createRoomConfirm = async () => {
   }
 
   try {
-    const response = await api.post('${apiBase}/chatrooms', {
+    const response = await api.post(`${apiBase}/chatrooms`, {
       name: newRoomName.value.trim(),
       is_private: newRoomPrivacy.value === 'private',
       created_by: username
@@ -579,7 +587,7 @@ const loadHistory = async (roomId: string) => {
 //   }
 // } // 此处有修改
 
-function fetchHistoryViaWebSocket(roomId: string, before: string, limit: number): Promise<any[]> {
+function fetchHistoryViaWebSocket(roomId: string, before: string|undefined, limit: number): Promise<any[]> {
     return new Promise((resolve, reject) => {
         const socket = sockets.value[roomId];
         if (!socket) {
@@ -623,15 +631,15 @@ function fetchHistoryViaWebSocket(roomId: string, before: string, limit: number)
     });
 }
 
-const handleScroll = () => { // 此处有修改
-  const el = messageContainer.value
-  if (!el || !selectedRoom.value) return
-  console.log("el.scrollTop current:", el.scrollTop)
-  if (el.scrollTop <= 5) {
-    console.log("检测到滚动，scrollTop:", el.scrollTop)
-    loadHistory(selectedRoom.value.id)
-  }
-} // 此处有修改
+// const handleScroll = () => { // 此处有修改
+//   const el = messageContainer.value
+//   if (!el || !selectedRoom.value) return
+//   console.log("el.scrollTop current:", el.scrollTop)
+//   if (el.scrollTop <= 5) {
+//     console.log("检测到滚动，scrollTop:", el.scrollTop)
+//     loadHistory(selectedRoom.value.id)
+//   }
+// } // 此处有修改
 
 //退出聊天室
 const showExitConfirm = ref(false)
@@ -664,7 +672,7 @@ const confirmExitChatroom = async () => {
   if (!exitRoomToConfirm.value) return
 
   try {
-    await api.post('${apiBase}/chatrooms/exit', {
+    await api.post(`${apiBase}/chatrooms/exit`, {
       username,
       chatroom_id: exitRoomToConfirm.value.id,
     })
