@@ -7,11 +7,11 @@
         @keyup.enter="handleSearchRoom"
         type="text"
         class="search-input"
-        placeholder="搜索聊天室（输入 ID 并按下回车）..."
+        placeholder="Search for a chatroom (type chatroom ID and hit enter)..."
       />
       <div class="user-info">
         <span class="username">{{ username }}</span>
-        <button class="logout-button" @click="logout">登出</button>
+        <button class="logout-button" @click="logout">Logout</button>
       </div>
     </div>
 
@@ -340,7 +340,7 @@ const connectWebSocket = async (roomId: string) => {
     // const wsUrl = `ws://10.0.0.23:${forcePort.value}/ws/${roomId}?username=${username}`
     // const wsUrl = `ws://3.135.215.221/ws/${roomId}?username=${username}`
     console.log("base_wsUrl:", base_wsUrl)
-    var final_wsurl = `${base_wsUrl}/${roomId}?username=${username}`
+    var final_wsurl = `${base_wsUrl}/${roomId}?username=${username}&token=${localStorage.getItem('token')}`
     console.log("ws url:", final_wsurl)
     const socket = new WebSocket(final_wsurl);
     sockets.value[roomId] = socket;
@@ -395,6 +395,7 @@ const connectWebSocket = async (roomId: string) => {
 
     socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        alert('WebSocket error occurred. Please check your connection.');
     };
 
     socket.onclose = () => {

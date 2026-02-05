@@ -16,4 +16,4 @@ api.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-export default api  //这句不能少！
+export default api
